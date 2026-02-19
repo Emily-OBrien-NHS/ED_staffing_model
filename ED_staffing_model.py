@@ -463,6 +463,14 @@ occ['Day of Week'] = occ['Day'] % 7
 print('----Average Staff Usage')
 print(occ[['Consultants', 'Middle Tier', 'Residents']].mean())
 
+#LoS summary numbers
+pat['LoS'] = pat['Leave'] - pat['Arrival']
+pat['not 4hr breach'] = np.where(pat['LoS'] < 240, True, False)
+perf_4hr = 100 * pat['not 4hr breach'].sum() / len(pat)
+print('----Average LoS')
+print(pat['LoS'].agg(['mean', 'median']))
+print('--')
+print(f'4 hour performance: {perf_4hr:.2f}%')
 
 ##################################################################################################
 ############################################PLOTS#################################################
@@ -470,6 +478,7 @@ print(occ[['Consultants', 'Middle Tier', 'Residents']].mean())
 hours = pat['Arrival Hour'].drop_duplicates().sort_values()
 days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 staff_members = ['Consultants', 'Middle Tier', 'Residents']
+areas = ['Paeds', 'Ambulatory', 'Majors', 'Resus']
 
 def q25(x):
     return x.quantile(0.25)
@@ -483,7 +492,7 @@ agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival Hour'], as_index=Fals
                   .groupby(['Area', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
 hours = pat['Arrival Hour'].drop_duplicates().sort_values()
 #plot
-fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(20, 10), sharex=True)
+fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
 fig.suptitle('Arrivals by Hour of Day', fontsize=24)
 
 for ax, area in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
@@ -506,10 +515,10 @@ agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour']
                   .groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
 hours = pat['Arrival Hour'].drop_duplicates().sort_values()
 
-for area in ['Ambulatory', 'Majors', 'Resus', 'Paeds']:
+for area in areas:
     area_data = agg_figures.loc[area].copy()
     #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
+    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
     fig.suptitle(f'{area} - Arrivals by Day of Week', fontsize=24)
     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
         data = area_data.loc[i].copy()
@@ -528,7 +537,7 @@ for area in ['Ambulatory', 'Majors', 'Resus', 'Paeds']:
 
 #######################Staff Usage
 agg_figures = occ.groupby('Hour')[staff_members].agg(['min', q25,'mean', q75, 'max'])
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 8), sharex=True, sharey=True)
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 10), sharex=True, sharey=True)
 fig.suptitle(f'Staff Usage', fontsize=24)
 for ax, staff in zip([ax1, ax2, ax3], staff_members):
     data = agg_figures[staff].copy()
@@ -550,7 +559,7 @@ agg_figures = occ.groupby(['Day of Week', 'Hour'])[staff_members].agg(['min', q2
 for staff in ['Consultants', 'Middle Tier', 'Residents']:
     staff_data = agg_figures[staff].copy()
     #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
+    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
     fig.suptitle(f'{staff} - Usage by Day of Week', fontsize=24)
     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
         data = staff_data.loc[i].copy()
@@ -571,7 +580,7 @@ for staff in ['Consultants', 'Middle Tier', 'Residents']:
 agg_figures = occ.groupby('Hour')[['Amb Assessment Use', 'Maj Assessment Use',
             'Res Assessment Use',  'Pae Assessment Use']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(20, 8), sharex=True)
+fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
 fig.suptitle(f'Assessment Space Usage', fontsize=24)
 for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
     data = agg_figures[f'{loc[:3]} Assessment Use'].copy()
@@ -590,7 +599,7 @@ plt.close()
 ##########Triage space usage
 agg_figures = occ.groupby('Hour')[['Amb Triage Use', 'Maj Triage Use']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
 fig.suptitle(f'Triage Space Usage', fontsize=24)
 for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
     data = agg_figures[f'{loc[:3]} Triage Use'].copy()
@@ -605,3 +614,92 @@ fig.supylabel('Number in Use', fontsize=18)
 fig.tight_layout()
 plt.savefig(f'Plots/Space Usage Triage  - {default_params.run_name}.png', bbox_inches='tight')
 plt.close()
+
+##################################Length of Stay
+#######################LoS
+agg_figures = pat.groupby(['Area', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
+
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
+fig.suptitle(f'Length of Stay', fontsize=24)
+for ax, area in zip([ax1, ax2, ax3, ax4], areas):
+    data = agg_figures.loc[area].copy()
+    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+    ax.set_title(area, fontsize=18)
+    ax.tick_params(axis='both',  which='major', labelsize=18)
+plt.legend(fontsize=18)
+fig.supxlabel('Arrival Hour of Day', fontsize=18)
+fig.supylabel('Average LoS', fontsize=18)
+fig.tight_layout()
+plt.savefig(f'Plots/LoS all areas - {default_params.run_name}.png', bbox_inches='tight')
+plt.close()
+
+########LoS by day of week
+agg_figures = pat.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
+for area in areas:
+    area_data = agg_figures.loc[area].copy()
+    #plot
+    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
+    fig.suptitle(f'{area} - LoS by Day of Week', fontsize=24)
+    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+        data = area_data.loc[i].copy()
+        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+        ax.set_title(days_of_week[i], fontsize=18)
+        ax.tick_params(axis='both',  which='major', labelsize=18)
+    plt.legend(fontsize=18)
+    fig.supxlabel('Arrival Hour of Day', fontsize=18)
+    fig.supylabel('Average LoS', fontsize=18)
+    fig.tight_layout()
+    ax8.axis('off')
+    plt.savefig(f'Plots/LoS {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
+    plt.close()
+
+
+
+
+##################################4 hour performance
+agg_figures = pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['not 4hr breach'].agg(['sum', 'count'])
+agg_figures['4 hour performance'] = agg_figures['sum'] / agg_figures['count']
+
+#######################4 hour
+area_agg = agg_figures.groupby(['Area', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
+fig.suptitle(f'4 hour performance', fontsize=24)
+for ax, area in zip([ax1, ax2, ax3, ax4], areas):
+    data = area_agg.loc[area].copy()
+    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+    ax.set_title(area, fontsize=18)
+    ax.tick_params(axis='both',  which='major', labelsize=18)
+plt.legend(fontsize=18)
+fig.supxlabel('Arrival Hour of Day', fontsize=18)
+fig.supylabel('4 hour performance', fontsize=18)
+fig.tight_layout()
+plt.savefig(f'Plots/4hr performance all areas - {default_params.run_name}.png', bbox_inches='tight')
+plt.close()
+
+########4hr perf by day of week
+area_agg = agg_figures.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
+for area in areas:
+    area_data = area_agg.loc[area].copy()
+    #plot
+    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
+    fig.suptitle(f'{area} - 4 hour performance by day of week', fontsize=24)
+    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+        data = area_data.loc[i].copy()
+        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+        ax.set_title(days_of_week[i], fontsize=18)
+        ax.tick_params(axis='both',  which='major', labelsize=18)
+    plt.legend(fontsize=18)
+    fig.supxlabel('Arrival Hour of Day', fontsize=18)
+    fig.supylabel('4 hour performance', fontsize=18)
+    fig.tight_layout()
+    ax8.axis('off')
+    plt.savefig(f'Plots/4hr performance {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
+    plt.close()

@@ -25,3 +25,6 @@
 #Results file
 /Outputs
 /Population Data
+
+#Thumbs file
+*.db
