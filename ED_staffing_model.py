@@ -17,9 +17,10 @@ class default_params():
     run_name = 'ED Staffing Model'
     #run times and iterations
     run_time = 24*60*365#525600
-    run_days = int(run_time/(60*24))
-    iterations = 5
+    run_days = int(run_time/(60*24)) 
+    iterations = 2#0
     sample_time = 15
+    print_outs = False
 
     ###################EVENTS
     ########Mean Event Timings (_time_) and Capacities (_cap)
@@ -28,7 +29,7 @@ class default_params():
     amb_time_assess = 50
     amb_time_wait = 60
     amb_time_decisi = 15
-    amb_triage_cap = 2
+    amb_triage_cap = 5
     amb_assess_cap = 23
     #Majors
     maj_time_triage = 10
@@ -69,9 +70,9 @@ class default_params():
     
     ###################STAFFING
     ########Staffing Numbers
-    no_consultants = np.inf
-    no_middle_tier = np.inf
-    no_resident = np.inf
+    staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing input.xlsx'
+    wkdy_staff = pd.read_excel(staff_file, sheet_name='Weekday', index_col=0)
+    wknd_staff = pd.read_excel(staff_file, sheet_name='Weekend', index_col=0)
 
     ########Staffing Requirements
     #staff appear in order of preference and priority
@@ -125,6 +126,7 @@ class default_params():
     maj_demand = demand.loc[demand['Location'] == 'Majors'].pivot(index='Hr', columns='wkdy', values='Arrivals')
     res_demand = demand.loc[demand['Location'] == 'Resus'].pivot(index='Hr', columns='wkdy', values='Arrivals')
     pae_demand = demand.loc[demand['Location'] == 'Paeds'].pivot(index='Hr', columns='wkdy', values='Arrivals')
+    print(demand.groupby(['Location', 'wkdy'], as_index=False)['Arrivals'].sum().groupby('Location')['Arrivals'].mean())
 
     ###################RESULTS
     pat_res = []
@@ -155,6 +157,43 @@ class spawn_patient:
         self.decision_staff = np.nan
         self.leave_time = np.nan
 
+class DynamicResource(simpy.Resource):
+    #Create own dynamic resource that can change capacity, and have no capacity
+    #(by having capacity = 1 then immediately claiming it)
+
+    #Initiate dynamic resource and list of blocked resources (simulating)
+    def __init__(self, env, capacity=1):
+        super().__init__(env, capacity=max(1, capacity))
+        self._blockers = []
+        self._blocked = False
+    #Resets resource capacity each hour
+    def set_capacity(self, new_capacity):
+        if new_capacity == 0:
+            self._enable_block()
+        else:
+            self._disable_block()
+            self._capacity = new_capacity
+            self._trigger_put(None)  # wake up any queued requests
+    #If capacity is 0, make capacity = 1 (to avoid errors) and immediately take the resource
+    def _enable_block(self):
+        if not self._blocked:
+            self._blocked = True
+            self._capacity = 1
+            req = super().request()
+            self._blockers.append(req)
+            self._trigger_put(None)
+    #If capacity > 0, set capacity to that and release any blocks
+    def _disable_block(self):
+        if self._blocked:
+            self._blocked = False
+            for req in self._blockers:
+                super().release(req)
+            self._blockers.clear()
+    #Returns the capacity
+    @property
+    def effective_capacity(self):
+        return 0 if self._blocked else self._capacity
+    
 class ED_staffing_model:
     def __init__(self, run_number, input_params):
         #Set up lists to record results
@@ -166,9 +205,10 @@ class ED_staffing_model:
         self.patient_counter = 0
         self.run_number = run_number
         #establish staff dictionary
-        self.staff = {'Consultant' : simpy.Resource(self.env, capacity=input_params.no_consultants),
-                      'Middle Tier' : simpy.Resource(self.env, capacity=input_params.no_middle_tier),
-                      'Resident' : simpy.Resource(self.env, capacity=input_params.no_resident)}
+        self.staff = {'Consultant':  DynamicResource(self.env, capacity=1),
+                      'Middle Tier': DynamicResource(self.env, capacity=1),
+                      'Resident':    DynamicResource(self.env, capacity=1)}
+        #establish location resources
         self.amb_triage = simpy.PriorityResource(self.env, capacity=input_params.amb_triage_cap)
         self.maj_triage = simpy.PriorityResource(self.env, capacity=input_params.maj_triage_cap)
         self.amb_assess = simpy.PriorityResource(self.env, capacity=input_params.amb_assess_cap)
@@ -185,7 +225,42 @@ class ED_staffing_model:
         #divided by number of days
         hour = math.floor((time % (day*(24*60)) if day != 0 else time) / 60)
         return day, day_of_week, hour
-    
+
+    ##############################STAFFING ROTA##############################
+    def staffing_rota(self):
+        if default_params.print_outs:
+            print('Starting staff rota')
+        #cons_block, mt_block, res_block = False, False, False
+        while True:
+            #Get the time
+            day, day_of_week, hour = self.model_time(self.env.now)
+            wkdy = True if day_of_week not in [5, 6] else False
+            #Work out which staff to use if weekday vs weekend
+            staff_no = (self.input_params.wkdy_staff.loc[hour].copy() if wkdy
+                        else self.input_params.wknd_staff.loc[hour].copy())
+            
+            if default_params.print_outs:
+                print('-----------------')
+                pr_str = 'Weekday' if wkdy else 'Weekend'
+                print(f'Staff at hour {hour} on day {day} - {pr_str}:')
+                print(staff_no[['Total Consultants', 'Total Middle Tier', 'Total Residents']])
+
+            #Get the numbers of each individual staff member
+            no_consultants = staff_no['Total Consultants']
+            no_middle_tier = staff_no['Total Middle Tier']
+            no_resident = staff_no['Total Residents']
+
+            # Mutate existing resources — patients mid-process are unaffected
+            self.staff['Consultant'].set_capacity(no_consultants)
+            self.staff['Middle Tier'].set_capacity(no_middle_tier)
+            self.staff['Resident'].set_capacity(no_resident)
+
+            if default_params.print_outs:
+                print(f'Staff levels updated: to {self.staff['Consultant'].capacity}, {self.staff['Middle Tier'].capacity}, {self.staff['Resident'].capacity}')
+                print('---------------------------')
+            #repeat every hour
+            yield self.env.timeout(60)
+       
     ##############################ORDERED REQUESTS##############################
     def ordered_requests(self, order_lst):
         #Requst each staff member in order of priority, wait until one is returned
@@ -201,7 +276,14 @@ class ED_staffing_model:
                 staff_req = req
                 req_found = True
             else:
-                self.staff[res_name].release(req)
+                # CRITICAL: Different handling depending on whether request was granted
+                if req.triggered:
+                    # Request was granted (another AnyOf winner) — must release properly
+                    self.staff[res_name].release(req)
+                else:
+                    # Request is still queued — cancel it instead
+                    req.cancel()
+                #self.staff[res_name].release(req)
         return staff_found, staff_req
 
     ##############################ARRIVALS##############################
@@ -228,7 +310,8 @@ class ED_staffing_model:
             self.patient_counter += 1
             p = spawn_patient(self.patient_counter, area, time, day_of_week, hour,
                               self.input_params.stream[area])
-           # print(f'{area}: patient {p.id} spawned, starting model at time {self.env.now}')
+            if default_params.print_outs:
+                print(f'{area} patient {p.id}: spawned, starting model at time {self.env.now}')
             self.env.process(self.ED_journey(p))
             #####time out until the next patient arrival
             hr_arrs = demand.loc[hour, day_of_week].copy()
@@ -287,29 +370,37 @@ class ED_staffing_model:
 
         #####TRIAGE
         if patient.area in ['Ambulatory', 'Majors']:
-           # print(f'{patient.area}: patient {patient.id} requesting triage at time {patient.arrival_time}')
+            if default_params.print_outs:
+                print(f'{patient.area} patient {patient.id}: requesting triage at time {patient.arrival_time}')
             #Space request based on if Ambulatory or Majors
             space_req = self.amb_triage.request() if area == 'Ambulatory' else self.maj_triage.request()
             with space_req:
                 yield space_req
                 #Request a staff member in order of priority
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: requesting {staffing['Triage']} for triage at time {patient.arrival_time}')
                 name, staff_req = yield from self.ordered_requests(staffing['Triage'])
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: using {name} for triage at {self.env.now}')
                 #Record the time the process begins and timeout for triage time
                 patient.triage_time = self.env.now
                 patient.triage_staff = name
                 sampled_triage_time = round((random.expovariate(1.0 / triage_time)))
                 yield self.env.timeout(sampled_triage_time)
                 self.staff[name].release(staff_req)
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: releasing {name} for triage at {self.env.now}')
+            
 
         #####STREAMING
         if patient.streamed:
             patient.leave_time = self.env.now
-           # print(f'{patient.area}: patient {patient.id} triaged and streamed at time {patient.leave_time}')
+            #print(f'{patient.area}: patient {patient.id} triaged and streamed at time {patient.leave_time}')
             self.store_patient_results(patient)
         
         else:
         #####ASSESSMENT
-           # print(f'{patient.area}: patient {patient.id} triaged, requesting assessment at {self.env.now}')
+            #print(f'{patient.area}: patient {patient.id} triaged, requesting assessment at {self.env.now}')
             if area == 'Ambulatory':
                 space_req = self.amb_assess.request()
             elif area == 'Majors':
@@ -323,15 +414,20 @@ class ED_staffing_model:
             with space_req:
                 yield space_req
                 #Staff request
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: requesting {staffing['Assessment or Descision']} for assessment at time {patient.arrival_time}')
                 name, staff_req = yield from self.ordered_requests(staffing['Assessment or Descision'])
                 #Record the time the process begins
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: using {name} for Assessment at {self.env.now}')
                 patient.assessment_time = self.env.now
                 patient.assessment_staff = name
                 #Timeout for process time
                 sampled_assess_time = round((random.expovariate(1.0 / assess_time)))
                 yield self.env.timeout(sampled_assess_time)
                 self.staff[name].release(staff_req)
-               # print(f'{name} released')
+                if default_params.print_outs:
+                    print(f'{patient.area} patient {patient.id}: releasing {name} for Assessment at {self.env.now}')
             
         #####WAIT FOR SPEC/INVESTIGATIONS
            # print(f'{patient.area}: patient {patient.id} waiting for spec at {self.env.now}')
@@ -343,18 +439,25 @@ class ED_staffing_model:
         #####DECISION
            # print(f'{patient.area}: patient {patient.id} starting getting decision {self.env.now}')
             #Staff request
+            if default_params.print_outs:
+                print(f'{patient.area} patient {patient.id}: requesting {staffing['Assessment or Descision']} for decision at time {patient.arrival_time}')
             name, staff_req = yield from self.ordered_requests(staffing['Assessment or Descision'])
             #Record the time the process begins
+            if default_params.print_outs:
+                print(f'{patient.area} patient {patient.id}: using {name} for decision at {self.env.now}')
             patient.decision_time = self.env.now
             patient.decision_staff = name
             #Timeout for process time
             sampled_decision_time = round((random.expovariate(1.0 / decisi_time)))
             yield self.env.timeout(sampled_decision_time)
             self.staff[name].release(staff_req)
+            if default_params.print_outs:
+                print(f'{patient.area} patient {patient.id}: releasing {name} for decision at {self.env.now}')
 
          #####EXIT MODEL
             patient.leave_time = self.env.now
-           # print(f'{patient.area}: patient {patient.id} exits model at time {patient.leave_time}')
+            if default_params.print_outs:
+                print(f'{patient.area} patient {patient.id}: exits model at time {patient.leave_time}')
             self.store_patient_results(patient)
 
     #################RECORD RESULTS####################
@@ -376,12 +479,23 @@ class ED_staffing_model:
     
     def store_staff_and_occ(self):
         while True:
+            if default_params.print_outs:
+                print(f'OCC CHECK: {self.staff['Consultant'].count} Consultants, {self.staff['Middle Tier'].count} Middle Tier and {self.staff['Resident'].count} Residents in use at time {self.env.now}')
+            
+            def real_count(res):
+                #In-use count excluding any blocker requests
+                return res.count - len(res._blockers)
+            
             self.occ_staff_results.append([self.run_number,
                                            self.staff['Consultant']._env.now,
                                            #staff
-                                           self.staff['Consultant'].count,
-                                           self.staff['Middle Tier'].count,
-                                           self.staff['Resident'].count,
+                                           real_count(self.staff['Consultant']),
+                                           real_count(self.staff['Middle Tier']),
+                                           real_count(self.staff['Resident']),
+                                           #staff queue
+                                           len(self.staff['Consultant'].queue),
+                                           len(self.staff['Middle Tier'].queue),
+                                           len(self.staff['Resident'].queue),
                                            #Triage Locations
                                            len(self.amb_triage.queue),
                                            self.amb_triage.count,
@@ -400,6 +514,7 @@ class ED_staffing_model:
       
 ########################RUN#######################
     def run(self):
+        self.env.process(self.staffing_rota())
         self.env.process(self.arrivals('Ambulatory'))
         self.env.process(self.arrivals('Majors'))
         self.env.process(self.arrivals('Resus'))
@@ -420,6 +535,7 @@ def export_results(pat_results, occ_staff_results):
     occupancy_df = pd.DataFrame(occ_staff_results,
                                 columns=['Run', 'Time',
                                          'Consultants', 'Middle Tier', 'Residents',
+                                         'Consultant Queue', 'Middle Tier Queue', 'Residents Queue',
                                          'Amb Triage Queue', 'Amb Triage Use',
                                          'Maj Triage Queue', 'Maj Triage Use',
                                          'Amb Assessment Queue', 'Amb Assessment Use',
@@ -497,6 +613,7 @@ fig.suptitle('Arrivals by Hour of Day', fontsize=24)
 
 for ax, area in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
     data = agg_figures.loc[area].copy()
+    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
@@ -522,6 +639,7 @@ for area in areas:
     fig.suptitle(f'{area} - Arrivals by Day of Week', fontsize=24)
     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
         data = area_data.loc[i].copy()
+        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
@@ -596,6 +714,26 @@ fig.tight_layout()
 plt.savefig(f'Plots/Space Usage Assessment - {default_params.run_name}.png', bbox_inches='tight')
 plt.close()
 
+########Triage and Assessment space queue
+agg_figures = occ.groupby('Hour')[['Amb Assessment Queue', 'Maj Assessment Queue',
+              'Res Assessment Queue',  'Pae Assessment Queue']].agg(['min', q25,'mean', q75, 'max'])
+
+fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
+fig.suptitle(f'Assessment Space Queue', fontsize=24)
+for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
+    data = agg_figures[f'{loc[:3]} Assessment Queue'].copy()
+    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+    ax.set_title(loc, fontsize=18)
+    ax.tick_params(axis='both',  which='major', labelsize=18)
+plt.legend(fontsize=18)
+fig.supxlabel('Hour of Day', fontsize=18)
+fig.supylabel('Patients in Queue', fontsize=18)
+fig.tight_layout()
+plt.savefig(f'Plots/Space Queue Assessment - {default_params.run_name}.png', bbox_inches='tight')
+plt.close()
+
 ##########Triage space usage
 agg_figures = occ.groupby('Hour')[['Amb Triage Use', 'Maj Triage Use']].agg(['min', q25,'mean', q75, 'max'])
 
@@ -615,6 +753,25 @@ fig.tight_layout()
 plt.savefig(f'Plots/Space Usage Triage  - {default_params.run_name}.png', bbox_inches='tight')
 plt.close()
 
+##########Triage space queue
+agg_figures = occ.groupby('Hour')[['Amb Triage Queue', 'Maj Triage Queue']].agg(['min', q25,'mean', q75, 'max'])
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
+fig.suptitle(f'Triage Space Queue', fontsize=24)
+for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
+    data = agg_figures[f'{loc[:3]} Triage Queue'].copy()
+    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+    ax.set_title(loc, fontsize=18)
+    ax.tick_params(axis='both',  which='major', labelsize=18)
+plt.legend(fontsize=18)
+fig.supxlabel('Hour of Day', fontsize=18)
+fig.supylabel('Patients in Queue', fontsize=18)
+fig.tight_layout()
+plt.savefig(f'Plots/Space Queue Triage  - {default_params.run_name}.png', bbox_inches='tight')
+plt.close()
+
 ##################################Length of Stay
 #######################LoS
 agg_figures = pat.groupby(['Area', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
@@ -623,6 +780,7 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True
 fig.suptitle(f'Length of Stay', fontsize=24)
 for ax, area in zip([ax1, ax2, ax3, ax4], areas):
     data = agg_figures.loc[area].copy()
+    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
@@ -643,7 +801,12 @@ for area in areas:
     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
     fig.suptitle(f'{area} - LoS by Day of Week', fontsize=24)
     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        data = area_data.loc[i].copy()
+        try:
+            data = area_data.loc[i].copy()
+
+        except:
+            data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
+        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
@@ -657,9 +820,6 @@ for area in areas:
     plt.savefig(f'Plots/LoS {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
     plt.close()
 
-
-
-
 ##################################4 hour performance
 agg_figures = pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['not 4hr breach'].agg(['sum', 'count'])
 agg_figures['4 hour performance'] = agg_figures['sum'] / agg_figures['count']
@@ -670,6 +830,7 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True
 fig.suptitle(f'4 hour performance', fontsize=24)
 for ax, area in zip([ax1, ax2, ax3, ax4], areas):
     data = area_agg.loc[area].copy()
+    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
@@ -690,7 +851,11 @@ for area in areas:
     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
     fig.suptitle(f'{area} - 4 hour performance by day of week', fontsize=24)
     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        data = area_data.loc[i].copy()
+        try:  
+            data = area_data.loc[i].copy()
+        except:
+            data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
+        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
