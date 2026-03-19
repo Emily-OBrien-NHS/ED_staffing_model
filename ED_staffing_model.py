@@ -14,7 +14,7 @@ class default_params():
                            'trusted_connection=yes&driver=ODBC+Driver+17'\
                                '+for+SQL+Server')
     ########General Params
-    run_name = 'ED Staffing Model'
+    run_name = 'baseline'
     #run times and iterations
     run_time = 24*60*365#525600
     run_days = int(run_time/(60*24)) 
@@ -73,6 +73,8 @@ class default_params():
     staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing input.xlsx'
     wkdy_staff = pd.read_excel(staff_file, sheet_name='Weekday', index_col=0)
     wknd_staff = pd.read_excel(staff_file, sheet_name='Weekend', index_col=0)
+    #wkdy_staff.iloc[:, :] = np.inf 
+    #wknd_staff.iloc[:, :] = np.inf 
 
     ########Staffing Requirements
     #staff appear in order of preference and priority
@@ -582,12 +584,18 @@ print(occ[['Consultants', 'Middle Tier', 'Residents']].mean())
 #LoS summary numbers
 pat['LoS'] = pat['Leave'] - pat['Arrival']
 pat['not 4hr breach'] = np.where(pat['LoS'] < 240, True, False)
-perf_4hr = 100 * pat['not 4hr breach'].sum() / len(pat)
+perf_4hr = pat.groupby('Area').agg({'not 4hr breach':'sum', 'Patient ID':'count'})
+perf_4hr['4hr'] = 100 * perf_4hr['not 4hr breach'] / perf_4hr['Patient ID']
+all_4hr = 100 * perf_4hr['not 4hr breach'].sum() / perf_4hr['Patient ID'].sum()
 print('----Average LoS')
+print('Overall')
 print(pat['LoS'].agg(['mean', 'median']))
-print('--')
-print(f'4 hour performance: {perf_4hr:.2f}%')
-
+print('By area:')
+print(pat.groupby('Area')['LoS'].mean())
+print('----4 Hour performance')
+print(f'Overall 4 hour performance: {all_4hr:.2f}%')
+print('By area:')
+print(perf_4hr['4hr'])
 ##################################################################################################
 ############################################PLOTS#################################################
 ##################################################################################################
@@ -645,7 +653,7 @@ for area in areas:
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
         ax.set_title(days_of_week[i], fontsize=18)
         ax.tick_params(axis='both',  which='major', labelsize=18)
-    plt.legend(fontsize=18)
+    #plt.legend(fontsize=18)
     fig.supxlabel('Hour of Day', fontsize=18)
     fig.supylabel('Arrivals', fontsize=18)
     fig.tight_layout()
@@ -868,3 +876,8 @@ for area in areas:
     ax8.axis('off')
     plt.savefig(f'Plots/4hr performance {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
     plt.close()
+
+
+#######Model staffing requirements
+occ['Wknd'] = [0 if i < 5 else 1 for i in occ['Day of Week']]
+occ.groupby(['Wknd', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
