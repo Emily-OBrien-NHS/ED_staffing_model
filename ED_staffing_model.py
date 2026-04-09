@@ -70,7 +70,7 @@ class default_params():
     
     ###################STAFFING
     ########Staffing Numbers
-    staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing input.xlsx'
+    staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing Inputs/Proposed Staffing input.xlsx'
     wkdy_staff = pd.read_excel(staff_file, sheet_name='Weekday', index_col=0)
     wknd_staff = pd.read_excel(staff_file, sheet_name='Weekend', index_col=0)
     #wkdy_staff.iloc[:, :] = np.inf 
@@ -634,7 +634,6 @@ fig.tight_layout()
 plt.savefig(f'Plots/Arrivals - {default_params.run_name}.png', bbox_inches='tight')
 plt.close()
 
-
 #######DoW arrivals
 agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['Patient ID'].count()
                   .groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
@@ -679,7 +678,6 @@ fig.tight_layout()
 plt.savefig(f'Plots/Staff Usage All - {default_params.run_name}.png', bbox_inches='tight')
 plt.close()
 
-
 ########Staff Usage by day of week
 agg_figures = occ.groupby(['Day of Week', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
 for staff in ['Consultants', 'Middle Tier', 'Residents']:
@@ -694,7 +692,7 @@ for staff in ['Consultants', 'Middle Tier', 'Residents']:
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
         ax.set_title(days_of_week[i], fontsize=18)
         ax.tick_params(axis='both',  which='major', labelsize=18)
-    plt.legend(fontsize=18)
+    #plt.legend(fontsize=18)
     fig.supxlabel('Hour of Day', fontsize=18)
     fig.supylabel('Number in Use', fontsize=18)
     fig.tight_layout()
@@ -820,7 +818,7 @@ for area in areas:
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
         ax.set_title(days_of_week[i], fontsize=18)
         ax.tick_params(axis='both',  which='major', labelsize=18)
-    plt.legend(fontsize=18)
+    #plt.legend(fontsize=18)
     fig.supxlabel('Arrival Hour of Day', fontsize=18)
     fig.supylabel('Average LoS', fontsize=18)
     fig.tight_layout()
@@ -869,14 +867,13 @@ for area in areas:
         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
         ax.set_title(days_of_week[i], fontsize=18)
         ax.tick_params(axis='both',  which='major', labelsize=18)
-    plt.legend(fontsize=18)
+    #plt.legend(fontsize=18)
     fig.supxlabel('Arrival Hour of Day', fontsize=18)
     fig.supylabel('4 hour performance', fontsize=18)
     fig.tight_layout()
     ax8.axis('off')
     plt.savefig(f'Plots/4hr performance {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
     plt.close()
-
 
 #######Model staffing requirements
 occ['Wknd'] = [0 if i < 5 else 1 for i in occ['Day of Week']]
