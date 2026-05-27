@@ -523,8 +523,8 @@ class ED_staffing_model:
         self.env.process(self.arrivals('Paeds'))
         self.env.process(self.store_staff_and_occ())
         self.env.run(until = self.input_params.run_time)
-        default_params.pat_res += self.patient_results
-        default_params.occ_staff_res += self.occ_staff_results
+        self.input_params.pat_res += self.patient_results
+        self.input_params.occ_staff_res += self.occ_staff_results
         return self.patient_results, self.occ_staff_results
 
 def export_results(pat_results, occ_staff_results):
@@ -558,323 +558,323 @@ def run_the_model(input_params):
                                         input_params.occ_staff_res)
     return patient_df, occ_df
 
-###############Run and save the model
-pat, occ = run_the_model(default_params)
-os.chdir('G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model')
-pat.to_csv(f'Outputs/{default_params.run_name} Patients.csv')
-occ.to_csv(f'Outputs/{default_params.run_name} Occupancy.csv')
+# ###############Run and save the model
+# pat, occ = run_the_model(default_params)
+# os.chdir('G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model')
+# pat.to_csv(f'Outputs/{default_params.run_name} Patients.csv')
+# occ.to_csv(f'Outputs/{default_params.run_name} Occupancy.csv')
 
-############Print highlevel figures
-#Check arrival numbers/demand profile.
-pat['Day'] = (pat['Arrival'] / (24*60)).apply(math.floor)
-arrs = ((pat.groupby(['Area', 'Arrival Hour'])['Patient ID'].count()
-        / ((pat['Day'].max()+1) * (pat['Run'].max()+1))).reset_index()
-        .pivot(index='Arrival Hour', columns='Area', values='Patient ID'))
-print('----Average arrivals')
-print(arrs.sum())
+# ############Print highlevel figures
+# #Check arrival numbers/demand profile.
+# pat['Day'] = (pat['Arrival'] / (24*60)).apply(math.floor)
+# arrs = ((pat.groupby(['Area', 'Arrival Hour'])['Patient ID'].count()
+#         / ((pat['Day'].max()+1) * (pat['Run'].max()+1))).reset_index()
+#         .pivot(index='Arrival Hour', columns='Area', values='Patient ID'))
+# print('----Average arrivals')
+# print(arrs.sum())
 
-#Occupancy summary numbers
-occ['Day'] = (occ['Time'] / (24*60)).apply(math.floor)
-occ['Hour'] = (np.where((occ['Day']*(24*60)) != 0, occ['Time'] % (occ['Day']*(24*60)), occ['Time']) / 60)
-occ['Hour'] = occ['Hour'].apply(math.floor)
-occ['Day of Week'] = occ['Day'] % 7
-print('----Average Staff Usage')
-print(occ[['Consultants', 'Middle Tier', 'Residents']].mean())
+# #Occupancy summary numbers
+# occ['Day'] = (occ['Time'] / (24*60)).apply(math.floor)
+# occ['Hour'] = (np.where((occ['Day']*(24*60)) != 0, occ['Time'] % (occ['Day']*(24*60)), occ['Time']) / 60)
+# occ['Hour'] = occ['Hour'].apply(math.floor)
+# occ['Day of Week'] = occ['Day'] % 7
+# print('----Average Staff Usage')
+# print(occ[['Consultants', 'Middle Tier', 'Residents']].mean())
 
-#LoS summary numbers
-pat['LoS'] = pat['Leave'] - pat['Arrival']
-pat['not 4hr breach'] = np.where(pat['LoS'] < 240, True, False)
-perf_4hr = pat.groupby('Area').agg({'not 4hr breach':'sum', 'Patient ID':'count'})
-perf_4hr['4hr'] = 100 * perf_4hr['not 4hr breach'] / perf_4hr['Patient ID']
-all_4hr = 100 * perf_4hr['not 4hr breach'].sum() / perf_4hr['Patient ID'].sum()
-print('----Average LoS')
-print('Overall')
-print(pat['LoS'].agg(['mean', 'median']))
-print('By area:')
-print(pat.groupby('Area')['LoS'].mean())
-print('----4 Hour performance')
-print(f'Overall 4 hour performance: {all_4hr:.2f}%')
-print('By area:')
-print(perf_4hr['4hr'])
-##################################################################################################
-############################################PLOTS#################################################
-##################################################################################################
-hours = pat['Arrival Hour'].drop_duplicates().sort_values()
-days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-staff_members = ['Consultants', 'Middle Tier', 'Residents']
-areas = ['Paeds', 'Ambulatory', 'Majors', 'Resus']
+# #LoS summary numbers
+# pat['LoS'] = pat['Leave'] - pat['Arrival']
+# pat['not 4hr breach'] = np.where(pat['LoS'] < 240, True, False)
+# perf_4hr = pat.groupby('Area').agg({'not 4hr breach':'sum', 'Patient ID':'count'})
+# perf_4hr['4hr'] = 100 * perf_4hr['not 4hr breach'] / perf_4hr['Patient ID']
+# all_4hr = 100 * perf_4hr['not 4hr breach'].sum() / perf_4hr['Patient ID'].sum()
+# print('----Average LoS')
+# print('Overall')
+# print(pat['LoS'].agg(['mean', 'median']))
+# print('By area:')
+# print(pat.groupby('Area')['LoS'].mean())
+# print('----4 Hour performance')
+# print(f'Overall 4 hour performance: {all_4hr:.2f}%')
+# print('By area:')
+# print(perf_4hr['4hr'])
+# ##################################################################################################
+# ############################################PLOTS#################################################
+# ##################################################################################################
+# hours = pat['Arrival Hour'].drop_duplicates().sort_values()
+# days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+# staff_members = ['Consultants', 'Middle Tier', 'Residents']
+# areas = ['Paeds', 'Ambulatory', 'Majors', 'Resus']
 
-def q25(x):
-    return x.quantile(0.25)
-def q75(x):
-    return x.quantile(0.75)
-quartile_label = '25-75 quartiles'
+# def q25(x):
+#     return x.quantile(0.25)
+# def q75(x):
+#     return x.quantile(0.75)
+# quartile_label = '25-75 quartiles'
 
-##################Arrivals
-#######Daily Arrivals
-agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival Hour'], as_index=False)['Patient ID'].count()
-                  .groupby(['Area', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
-hours = pat['Arrival Hour'].drop_duplicates().sort_values()
-#plot
-fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
-fig.suptitle('Arrivals by Hour of Day', fontsize=24)
+# ##################Arrivals
+# #######Daily Arrivals
+# agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival Hour'], as_index=False)['Patient ID'].count()
+#                   .groupby(['Area', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
+# hours = pat['Arrival Hour'].drop_duplicates().sort_values()
+# #plot
+# fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
+# fig.suptitle('Arrivals by Hour of Day', fontsize=24)
 
-for ax, area in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
-    data = agg_figures.loc[area].copy()
-    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(area, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Arrivals', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Arrivals - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# for ax, area in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
+#     data = agg_figures.loc[area].copy()
+#     data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(area, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Arrivals', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Arrivals - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-#######DoW arrivals
-agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['Patient ID'].count()
-                  .groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
-hours = pat['Arrival Hour'].drop_duplicates().sort_values()
+# #######DoW arrivals
+# agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['Patient ID'].count()
+#                   .groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
+# hours = pat['Arrival Hour'].drop_duplicates().sort_values()
 
-for area in areas:
-    area_data = agg_figures.loc[area].copy()
-    #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
-    fig.suptitle(f'{area} - Arrivals by Day of Week', fontsize=24)
-    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        data = area_data.loc[i].copy()
-        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-        ax.set_title(days_of_week[i], fontsize=18)
-        ax.tick_params(axis='both',  which='major', labelsize=18)
-    #plt.legend(fontsize=18)
-    fig.supxlabel('Hour of Day', fontsize=18)
-    fig.supylabel('Arrivals', fontsize=18)
-    fig.tight_layout()
-    ax8.axis('off')
-    plt.savefig(f'Plots/Arrivals in {area}  by DoW - {default_params.run_name}.png', bbox_inches='tight')
-    plt.close()
+# for area in areas:
+#     area_data = agg_figures.loc[area].copy()
+#     #plot
+#     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
+#     fig.suptitle(f'{area} - Arrivals by Day of Week', fontsize=24)
+#     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+#         data = area_data.loc[i].copy()
+#         data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#         ax.set_title(days_of_week[i], fontsize=18)
+#         ax.tick_params(axis='both',  which='major', labelsize=18)
+#     #plt.legend(fontsize=18)
+#     fig.supxlabel('Hour of Day', fontsize=18)
+#     fig.supylabel('Arrivals', fontsize=18)
+#     fig.tight_layout()
+#     ax8.axis('off')
+#     plt.savefig(f'Plots/Arrivals in {area}  by DoW - {default_params.run_name}.png', bbox_inches='tight')
+#     plt.close()
 
-#######################Staff Usage
-agg_figures = occ.groupby('Hour')[staff_members].agg(['min', q25,'mean', q75, 'max'])
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 10), sharex=True, sharey=True)
-fig.suptitle(f'Staff Usage', fontsize=24)
-for ax, staff in zip([ax1, ax2, ax3], staff_members):
-    data = agg_figures[staff].copy()
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(staff, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Number in Use', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Staff Usage All - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# #######################Staff Usage
+# agg_figures = occ.groupby('Hour')[staff_members].agg(['min', q25,'mean', q75, 'max'])
+# fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 10), sharex=True, sharey=True)
+# fig.suptitle(f'Staff Usage', fontsize=24)
+# for ax, staff in zip([ax1, ax2, ax3], staff_members):
+#     data = agg_figures[staff].copy()
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(staff, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Number in Use', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Staff Usage All - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-########Staff Usage by day of week
-agg_figures = occ.groupby(['Day of Week', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
-for staff in ['Consultants', 'Middle Tier', 'Residents']:
-    staff_data = agg_figures[staff].copy()
-    #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
-    fig.suptitle(f'{staff} - Usage by Day of Week', fontsize=24)
-    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        data = staff_data.loc[i].copy()
-        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-        ax.set_title(days_of_week[i], fontsize=18)
-        ax.tick_params(axis='both',  which='major', labelsize=18)
-    #plt.legend(fontsize=18)
-    fig.supxlabel('Hour of Day', fontsize=18)
-    fig.supylabel('Number in Use', fontsize=18)
-    fig.tight_layout()
-    ax8.axis('off')
-    plt.savefig(f'Plots/Staff Usage {staff} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
-    plt.close()
+# ########Staff Usage by day of week
+# agg_figures = occ.groupby(['Day of Week', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
+# for staff in ['Consultants', 'Middle Tier', 'Residents']:
+#     staff_data = agg_figures[staff].copy()
+#     #plot
+#     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
+#     fig.suptitle(f'{staff} - Usage by Day of Week', fontsize=24)
+#     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+#         data = staff_data.loc[i].copy()
+#         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#         ax.set_title(days_of_week[i], fontsize=18)
+#         ax.tick_params(axis='both',  which='major', labelsize=18)
+#     #plt.legend(fontsize=18)
+#     fig.supxlabel('Hour of Day', fontsize=18)
+#     fig.supylabel('Number in Use', fontsize=18)
+#     fig.tight_layout()
+#     ax8.axis('off')
+#     plt.savefig(f'Plots/Staff Usage {staff} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
+#     plt.close()
 
-########Triage and Assessment space usage
-agg_figures = occ.groupby('Hour')[['Amb Assessment Use', 'Maj Assessment Use',
-            'Res Assessment Use',  'Pae Assessment Use']].agg(['min', q25,'mean', q75, 'max'])
+# ########Triage and Assessment space usage
+# agg_figures = occ.groupby('Hour')[['Amb Assessment Use', 'Maj Assessment Use',
+#             'Res Assessment Use',  'Pae Assessment Use']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
-fig.suptitle(f'Assessment Space Usage', fontsize=24)
-for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
-    data = agg_figures[f'{loc[:3]} Assessment Use'].copy()
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(loc, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Number in Use', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Space Usage Assessment - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
+# fig.suptitle(f'Assessment Space Usage', fontsize=24)
+# for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
+#     data = agg_figures[f'{loc[:3]} Assessment Use'].copy()
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(loc, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Number in Use', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Space Usage Assessment - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-########Triage and Assessment space queue
-agg_figures = occ.groupby('Hour')[['Amb Assessment Queue', 'Maj Assessment Queue',
-              'Res Assessment Queue',  'Pae Assessment Queue']].agg(['min', q25,'mean', q75, 'max'])
+# ########Triage and Assessment space queue
+# agg_figures = occ.groupby('Hour')[['Amb Assessment Queue', 'Maj Assessment Queue',
+#               'Res Assessment Queue',  'Pae Assessment Queue']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
-fig.suptitle(f'Assessment Space Queue', fontsize=24)
-for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
-    data = agg_figures[f'{loc[:3]} Assessment Queue'].copy()
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(loc, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Patients in Queue', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Space Queue Assessment - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
+# fig.suptitle(f'Assessment Space Queue', fontsize=24)
+# for ax, loc in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
+#     data = agg_figures[f'{loc[:3]} Assessment Queue'].copy()
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(loc, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Patients in Queue', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Space Queue Assessment - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-##########Triage space usage
-agg_figures = occ.groupby('Hour')[['Amb Triage Use', 'Maj Triage Use']].agg(['min', q25,'mean', q75, 'max'])
+# ##########Triage space usage
+# agg_figures = occ.groupby('Hour')[['Amb Triage Use', 'Maj Triage Use']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
-fig.suptitle(f'Triage Space Usage', fontsize=24)
-for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
-    data = agg_figures[f'{loc[:3]} Triage Use'].copy()
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(loc, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Number in Use', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Space Usage Triage  - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
+# fig.suptitle(f'Triage Space Usage', fontsize=24)
+# for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
+#     data = agg_figures[f'{loc[:3]} Triage Use'].copy()
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(loc, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Number in Use', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Space Usage Triage  - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-##########Triage space queue
-agg_figures = occ.groupby('Hour')[['Amb Triage Queue', 'Maj Triage Queue']].agg(['min', q25,'mean', q75, 'max'])
+# ##########Triage space queue
+# agg_figures = occ.groupby('Hour')[['Amb Triage Queue', 'Maj Triage Queue']].agg(['min', q25,'mean', q75, 'max'])
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
-fig.suptitle(f'Triage Space Queue', fontsize=24)
-for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
-    data = agg_figures[f'{loc[:3]} Triage Queue'].copy()
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(loc, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Hour of Day', fontsize=18)
-fig.supylabel('Patients in Queue', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/Space Queue Triage  - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 10), sharex=True, sharey=True)
+# fig.suptitle(f'Triage Space Queue', fontsize=24)
+# for ax, loc in zip([ax1, ax2, ax3], ['Ambulatory', 'Majors']):
+#     data = agg_figures[f'{loc[:3]} Triage Queue'].copy()
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(loc, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Hour of Day', fontsize=18)
+# fig.supylabel('Patients in Queue', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/Space Queue Triage  - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-##################################Length of Stay
-#######################LoS
-agg_figures = pat.groupby(['Area', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
+# ##################################Length of Stay
+# #######################LoS
+# agg_figures = pat.groupby(['Area', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
-fig.suptitle(f'Length of Stay', fontsize=24)
-for ax, area in zip([ax1, ax2, ax3, ax4], areas):
-    data = agg_figures.loc[area].copy()
-    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(area, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Arrival Hour of Day', fontsize=18)
-fig.supylabel('Average LoS', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/LoS all areas - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
+# fig.suptitle(f'Length of Stay', fontsize=24)
+# for ax, area in zip([ax1, ax2, ax3, ax4], areas):
+#     data = agg_figures.loc[area].copy()
+#     data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(area, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Arrival Hour of Day', fontsize=18)
+# fig.supylabel('Average LoS', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/LoS all areas - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-########LoS by day of week
-agg_figures = pat.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
-for area in areas:
-    area_data = agg_figures.loc[area].copy()
-    #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
-    fig.suptitle(f'{area} - LoS by Day of Week', fontsize=24)
-    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        try:
-            data = area_data.loc[i].copy()
+# ########LoS by day of week
+# agg_figures = pat.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max']) 
+# for area in areas:
+#     area_data = agg_figures.loc[area].copy()
+#     #plot
+#     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(18, 10), sharex=True, sharey=True)
+#     fig.suptitle(f'{area} - LoS by Day of Week', fontsize=24)
+#     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+#         try:
+#             data = area_data.loc[i].copy()
 
-        except:
-            data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
-        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-        ax.set_title(days_of_week[i], fontsize=18)
-        ax.tick_params(axis='both',  which='major', labelsize=18)
-    #plt.legend(fontsize=18)
-    fig.supxlabel('Arrival Hour of Day', fontsize=18)
-    fig.supylabel('Average LoS', fontsize=18)
-    fig.tight_layout()
-    ax8.axis('off')
-    plt.savefig(f'Plots/LoS {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
-    plt.close()
+#         except:
+#             data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
+#         data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#         ax.set_title(days_of_week[i], fontsize=18)
+#         ax.tick_params(axis='both',  which='major', labelsize=18)
+#     #plt.legend(fontsize=18)
+#     fig.supxlabel('Arrival Hour of Day', fontsize=18)
+#     fig.supylabel('Average LoS', fontsize=18)
+#     fig.tight_layout()
+#     ax8.axis('off')
+#     plt.savefig(f'Plots/LoS {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
+#     plt.close()
 
-##################################4 hour performance
-agg_figures = pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['not 4hr breach'].agg(['sum', 'count'])
-agg_figures['4 hour performance'] = agg_figures['sum'] / agg_figures['count']
+# ##################################4 hour performance
+# agg_figures = pat.groupby(['Run', 'Area', 'Day', 'Arrival DoW', 'Arrival Hour'], as_index=False)['not 4hr breach'].agg(['sum', 'count'])
+# agg_figures['4 hour performance'] = agg_figures['sum'] / agg_figures['count']
 
-#######################4 hour
-area_agg = agg_figures.groupby(['Area', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
-fig.suptitle(f'4 hour performance', fontsize=24)
-for ax, area in zip([ax1, ax2, ax3, ax4], areas):
-    data = area_agg.loc[area].copy()
-    data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-    ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-    ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-    ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-    ax.set_title(area, fontsize=18)
-    ax.tick_params(axis='both',  which='major', labelsize=18)
-plt.legend(fontsize=18)
-fig.supxlabel('Arrival Hour of Day', fontsize=18)
-fig.supylabel('4 hour performance', fontsize=18)
-fig.tight_layout()
-plt.savefig(f'Plots/4hr performance all areas - {default_params.run_name}.png', bbox_inches='tight')
-plt.close()
+# #######################4 hour
+# area_agg = agg_figures.groupby(['Area', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
+# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(18, 10), sharex=True, sharey=True)
+# fig.suptitle(f'4 hour performance', fontsize=24)
+# for ax, area in zip([ax1, ax2, ax3, ax4], areas):
+#     data = area_agg.loc[area].copy()
+#     data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#     ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#     ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#     ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#     ax.set_title(area, fontsize=18)
+#     ax.tick_params(axis='both',  which='major', labelsize=18)
+# plt.legend(fontsize=18)
+# fig.supxlabel('Arrival Hour of Day', fontsize=18)
+# fig.supylabel('4 hour performance', fontsize=18)
+# fig.tight_layout()
+# plt.savefig(f'Plots/4hr performance all areas - {default_params.run_name}.png', bbox_inches='tight')
+# plt.close()
 
-########4hr perf by day of week
-area_agg = agg_figures.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
-for area in areas:
-    area_data = area_agg.loc[area].copy()
-    #plot
-    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
-    fig.suptitle(f'{area} - 4 hour performance by day of week', fontsize=24)
-    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
-        try:  
-            data = area_data.loc[i].copy()
-        except:
-            data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
-        data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
-        ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
-        ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
-        ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
-        ax.set_title(days_of_week[i], fontsize=18)
-        ax.tick_params(axis='both',  which='major', labelsize=18)
-    #plt.legend(fontsize=18)
-    fig.supxlabel('Arrival Hour of Day', fontsize=18)
-    fig.supylabel('4 hour performance', fontsize=18)
-    fig.tight_layout()
-    ax8.axis('off')
-    plt.savefig(f'Plots/4hr performance {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
-    plt.close()
+# ########4hr perf by day of week
+# area_agg = agg_figures.groupby(['Area', 'Arrival DoW', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max']) 
+# for area in areas:
+#     area_data = area_agg.loc[area].copy()
+#     #plot
+#     fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
+#     fig.suptitle(f'{area} - 4 hour performance by day of week', fontsize=24)
+#     for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7]):
+#         try:  
+#             data = area_data.loc[i].copy()
+#         except:
+#             data = pd.DataFrame(columns=['min', 'q25', 'mean', 'q75', 'max'], index=hours).fillna(0)
+#         data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
+#         ax.plot(hours, data['mean'].fillna(0), '-r', label='Mean')
+#         ax.fill_between(hours, data['min'].fillna(0), data['max'].fillna(0), color='grey', alpha=0.2, label='Min-Max')
+#         ax.fill_between(hours, data['q25'].fillna(0), data['q75'].fillna(0), color='black', alpha=0.2, label=quartile_label)
+#         ax.set_title(days_of_week[i], fontsize=18)
+#         ax.tick_params(axis='both',  which='major', labelsize=18)
+#     #plt.legend(fontsize=18)
+#     fig.supxlabel('Arrival Hour of Day', fontsize=18)
+#     fig.supylabel('4 hour performance', fontsize=18)
+#     fig.tight_layout()
+#     ax8.axis('off')
+#     plt.savefig(f'Plots/4hr performance {area} by Day of Week - {default_params.run_name}.png', bbox_inches='tight')
+#     plt.close()
 
-#######Model staffing requirements
-occ['Wknd'] = [0 if i < 5 else 1 for i in occ['Day of Week']]
-occ.groupby(['Wknd', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
+# #######Model staffing requirements
+# occ['Wknd'] = [0 if i < 5 else 1 for i in occ['Day of Week']]
+# occ.groupby(['Wknd', 'Hour'])[staff_members].agg(['min', q25,'mean', q75, 'max'])
