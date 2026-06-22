@@ -3,7 +3,6 @@ pandas
 simpy
 matplotlib
 sqlalchemy
-itertools
 io
 base64
 xlsxwriter
