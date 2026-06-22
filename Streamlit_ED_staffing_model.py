@@ -1,19 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-import os
 import io
 import base64
 import xlsxwriter
-import pulp
 from utils.rota_generation import optimal_rota
 from utils.plots import hour_results_plots, day_results_plots
 import math
 from ED_staffing_model import default_params, ED_staffing_model, run_the_model
-import time
 from itertools import product
-import matplotlib.pyplot as plt
 #c:\Users\obriene2\venvs\.streamlit_venv\Scripts\Activate.ps1
 #streamlit run Streamlit_ED_staffing_model.py
 

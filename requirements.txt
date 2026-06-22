@@ -1,0 +1,11 @@
+numpy
+pandas
+simpy
+matplotlib
+math
+sqlalchemy
+itertools
+io
+base64
+xlsxwriter
+pulp

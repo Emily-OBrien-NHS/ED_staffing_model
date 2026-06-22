@@ -1,4 +1,3 @@
-import os
 import simpy
 import random
 import math
