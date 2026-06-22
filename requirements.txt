@@ -3,7 +3,5 @@ pandas
 simpy
 matplotlib
 sqlalchemy
-io
-base64
 xlsxwriter
 pulp
