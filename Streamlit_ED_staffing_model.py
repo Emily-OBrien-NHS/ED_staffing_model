@@ -42,12 +42,12 @@ with input_tabs[0]:
     col1, col2, col3 = st.columns(3)
     #ED Demand CSV upload
     with col1:
-        st.write('Please upload the recent ED demand csv file')
+        st.write('Please upload the recent ED demand file')
         valid_demand_file = False
-        demand_file = st.file_uploader("Choose a csv file", width=500)
+        demand_file = st.file_uploader("Choose an excel file", width=500)
         if demand_file is not None:
             try:
-                demand = pd.read_csv(demand_file, date_format='%d/%m/%Y')
+                demand = pd.read_excel(demand_file, date_format='%d/%m/%Y')
                 if  not ({'Location', 'Dt', 'Hr', 'Arrivals'}.issubset(set(demand.columns))):
                     st.error("Please upload the correct input file")
                 else:
@@ -93,7 +93,7 @@ with input_tabs[1]:
     #Run Time
     st.write('###### Set number of days to run the model for:')
     run_time = st.number_input('Simulation run time (days)', min_value=1, max_value=730, step=1,
-                                value=90 )
+                                value=120)
 
     st.write('###### Set average task durations and location capacities:')
     #Set title for each area
@@ -179,6 +179,8 @@ with input_tabs[1]:
 ####################################################################STAFFING LEVELS
 with input_tabs[2]:
     st.markdown('## Staffing Levels')
+    wkdy_staff = pd.DataFrame()
+    wknd_staff = pd.DataFrame()
 
     #User can chose between inputting a staff rota, or running with infinite staff.
     model_choice = st.radio('Run the model with pre-defined staffing rota? Or run to get optimum staffing?',
