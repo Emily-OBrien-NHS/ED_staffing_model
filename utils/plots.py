@@ -15,10 +15,10 @@ def q25(x):
 def q75(x):
     return x.quantile(0.75)
 
-def hour_of_day_area_plot(agg_figures, hours):
+def hour_of_day_area_plot(agg_figures, hours, title):
         # #plot
         fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(18, 10), sharex=True)
-        fig.suptitle('Arrivals by Hour of Day', fontsize=24)
+        fig.suptitle(f'{title} by Hour of Day', fontsize=24)
         for ax, area in zip([ax1, ax2, ax3, ax4], ['Ambulatory', 'Majors', 'Resus', 'Paeds']):
             data = agg_figures.loc[area].copy()
             data = data.reset_index().merge(pd.DataFrame(hours), on='Arrival Hour', how='right').set_index('Arrival Hour').fillna(0)
@@ -29,7 +29,7 @@ def hour_of_day_area_plot(agg_figures, hours):
             ax.tick_params(axis='both',  which='major', labelsize=18)
         plt.legend(fontsize=18)
         fig.supxlabel('Hour of Day', fontsize=18)
-        fig.supylabel('Arrivals', fontsize=18)
+        fig.supylabel(title, fontsize=18)
         fig.tight_layout()
         st.pyplot(fig)
 
@@ -54,7 +54,7 @@ def hour_results_plots(pat, occ):
         agg_figures = (pat.groupby(['Run', 'Area', 'Day', 'Arrival Hour'], as_index=False)['Patient ID'].count()
                         .groupby(['Area', 'Arrival Hour'])['Patient ID'].agg(['min', q25,'mean', q75, 'max']))
         hours = pat['Arrival Hour'].drop_duplicates().sort_values()
-        hour_of_day_area_plot(agg_figures, hours)
+        hour_of_day_area_plot(agg_figures, hours, 'Arrivals')
 
     #Staff Usage
     with plot_tabs[1]:
@@ -121,13 +121,13 @@ def hour_results_plots(pat, occ):
         agg_figures['4 hour performance'] = agg_figures['sum'] / agg_figures['count']
         agg_figures = agg_figures.groupby(['Area', 'Arrival Hour'])['4 hour performance'].agg(['min', q25,'mean', q75, 'max'])
         hours = pat['Arrival Hour'].drop_duplicates().sort_values()
-        hour_of_day_area_plot(agg_figures, hours)
+        hour_of_day_area_plot(agg_figures, hours, '4hr Performance')
 
     #LoS
     with plot_tabs[5]:
         agg_figures = pat.groupby(['Area', 'Arrival Hour'])['LoS'].agg(['min', q25,'mean', q75, 'max'])
         hours = pat['Arrival Hour'].drop_duplicates().sort_values()
-        hour_of_day_area_plot(agg_figures, hours)
+        hour_of_day_area_plot(agg_figures, hours, 'Length of Stay')
 
 
 ###################################################################################################
