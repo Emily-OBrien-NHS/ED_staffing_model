@@ -116,7 +116,7 @@ class default_params():
                     CONVERT(DATE, ArrivalDateTime),
                     DATEPART(HOUR, ArrivalDateTime) """
     #demand = pd.read_sql(demand_sql, cl3_engine)
-    demand = None
+    demand = pd.DataFrame({'Location':[''], 'Dt':[''], 'Hr':[''], 'Arrivals':[0]})
 
     #Get all dates and hours to account for hours were 0 attend.
     all_vals = pd.DataFrame(product(demand['Location'].drop_duplicates(),
