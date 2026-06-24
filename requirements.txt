@@ -3,5 +3,6 @@ pandas
 simpy
 matplotlib
 sqlalchemy
+pyodbc
 xlsxwriter
 pulp
