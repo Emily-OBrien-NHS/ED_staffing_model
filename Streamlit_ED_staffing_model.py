@@ -412,7 +412,7 @@ if 'pat' in st.session_state:
         out_demand = (pat.groupby(['Area', 'Day', 'Run'], as_index=False)['Patient ID'].count()
                     .groupby('Area')['Patient ID'].mean())
         #compare to inputted demand
-        demand = pd.DataFrame(inp_demand).join(pd.DataFrame(out_demand)).round()
+        demand = pd.DataFrame(args.inp_demand).join(pd.DataFrame(out_demand)).round()
         demand.columns = ['Input', 'Output']
         #create check for if input and outted arrivals are different
         demand['warn'] = ((abs(demand['Output'] - demand['Input']) / demand['Input']) > 0.3)
