@@ -317,6 +317,7 @@ args.amb_demand = amb_demand
 args.maj_demand = maj_demand
 args.res_demand = res_demand
 args.pae_demand = pae_demand
+args.inp_demand = inp_demand
 args.stream = stream
 #results
 args.pat_res = []
