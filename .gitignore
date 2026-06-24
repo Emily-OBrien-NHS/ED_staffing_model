@@ -1,6 +1,3 @@
-# any png files
-*.png
-
 # any excel files
 *.xlsx
 
@@ -24,7 +21,8 @@
 
 #Results file
 /Outputs
-/Population Data
+/Plots
+/Staffing Inputs
 
 #Thumbs file
 *.db
