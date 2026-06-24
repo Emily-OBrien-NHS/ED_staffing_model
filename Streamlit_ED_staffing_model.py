@@ -74,11 +74,6 @@ with input_tabs[0]:
         res_demand = demand.loc[demand['Location'] == 'Resus'].pivot(index='Hr', columns='wkdy', values='Arrivals')
         pae_demand = demand.loc[demand['Location'] == 'Paeds'].pivot(index='Hr', columns='wkdy', values='Arrivals')
 
-        st.dataframe(amb_demand)
-        st.dataframe(maj_demand)
-        st.dataframe(res_demand)
-        st.dataframe(pae_demand)
-
         inp_demand = (demand.groupby(['Location', 'wkdy'], as_index=False)['Arrivals'].sum()
                     .groupby('Location')['Arrivals'].mean().round())
         ########Add plot of daily demand for visualisation
@@ -312,6 +307,10 @@ args.maj_staffing = maj_staffing
 args.res_staffing = res_staffing
 args.pae_staffing = pae_staffing
 args.demand = demand
+args.amb_demand = amb_demand
+args.maj_demand = maj_demand
+args.res_demand = res_demand
+args.pae_demand = pae_demand
 args.stream = stream
 #results
 args.pat_res = []
