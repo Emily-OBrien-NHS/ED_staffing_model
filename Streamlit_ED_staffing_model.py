@@ -66,7 +66,6 @@ with input_tabs[0]:
         all_vals['wkdy'] = pd.to_datetime(all_vals['Dt'], dayfirst=True).dt.dayofweek
 
         demand = all_vals.merge(demand, on=['Location', 'Dt', 'Hr'], how='outer').fillna(0)
-        st.dataframe(demand)
 
         #Group up to get average arrivals per hour by location, pivot into usable format.
         demand = demand.groupby(['Location', 'wkdy', 'Hr'], as_index=False)['Arrivals'].mean()
@@ -74,6 +73,11 @@ with input_tabs[0]:
         maj_demand = demand.loc[demand['Location'] == 'Majors'].pivot(index='Hr', columns='wkdy', values='Arrivals')
         res_demand = demand.loc[demand['Location'] == 'Resus'].pivot(index='Hr', columns='wkdy', values='Arrivals')
         pae_demand = demand.loc[demand['Location'] == 'Paeds'].pivot(index='Hr', columns='wkdy', values='Arrivals')
+
+        st.dataframe(amb_demand)
+        st.dataframe(maj_demand)
+        st.dataframe(res_demand)
+        st.dataframe(pae_demand)
 
         inp_demand = (demand.groupby(['Location', 'wkdy'], as_index=False)['Arrivals'].sum()
                     .groupby('Location')['Arrivals'].mean().round())
@@ -86,8 +90,6 @@ with input_tabs[0]:
         with col3:
             st.write('Average daily ED arrivals by area in the uploaded file:')
             st.dataframe(inp_demand, width='content')
-        st.dataframe(demand)
-        st.dataframe(demand.dtypes)
 
 
 ##################################################################CAPACITIES, TIMINGS AND STREAMING
