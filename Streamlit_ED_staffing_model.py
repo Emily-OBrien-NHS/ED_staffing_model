@@ -412,14 +412,11 @@ if 'pat' in st.session_state:
         out_demand = (pat.groupby(['Area', 'Day', 'Run'], as_index=False)['Patient ID'].count()
                     .groupby('Area')['Patient ID'].mean())
         #compare to inputted demand
-        demand = pd.DataFrame(args.inp_demand).join(pd.DataFrame(out_demand)).round()
-        demand.columns = ['Input', 'Output']
+        demand = pd.DataFrame(args.inp_demand).join(pd.DataFrame(out_demand)).round().join(pat.groupby('Area')['Day'].max())
+        demand.columns = ['Input', 'Output', 'Max Recorded Day']
         #create check for if input and outted arrivals are different
-        demand['warn'] = ((abs(demand['Output'] - demand['Input']) / demand['Input']) > 0.3)
-
-        st.dataframe(pat.groupby('Area')['Day'].max())
-
-        st.dataframe(pat)
+        demand['warn'] = (((abs(demand['Output'] - demand['Input']) / demand['Input']) > 0.3)
+                          | (demand['Max Recorded Day'] <0.85 * (args.run_time / 60 / 24)))
 
         ####4hr performance
         #overall
@@ -447,7 +444,7 @@ if 'pat' in st.session_state:
             #Warning if input and output arrivals different
             if demand['warn'].sum() > 0:
                 areas = ', '.join(demand.loc[demand['warn']].index)
-                st.error(f'Input and Output numbers are significantly different for {areas}.  This suggests a blockage in the process.') 
+                st.error(f'Input, Output and recorded day numbers are significantly different for {areas}.  This suggests a blockage in the process.') 
         #4 hr performance
         with col2:
             st.subheader('4 Hour Performance')
