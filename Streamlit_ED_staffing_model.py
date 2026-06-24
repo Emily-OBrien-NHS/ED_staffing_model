@@ -44,7 +44,7 @@ with input_tabs[0]:
     with col1:
         st.write('Please upload the recent ED demand file')
         valid_demand_file = False
-        demand_file = st.file_uploader("Choose an excel file", width=500)
+        demand_file = st.file_uploader("Choose an excel file", width=500, key='demand')
         if demand_file is not None:
             try:
                 demand = pd.read_excel(demand_file, date_format='%d/%m/%Y')
@@ -189,7 +189,7 @@ with input_tabs[2]:
     if model_choice == 'Upload File':
         st.write('Please upload a staffing excel file')
         valid_file = False
-        staffing_file = st.file_uploader("Choose an excel file", width=500)
+        staffing_file = st.file_uploader("Choose an excel file", width=500, key='staff')
         if staffing_file is not None:
             try:
                 wkdy_staff = pd.read_excel(staffing_file, index_col='Hour', sheet_name='Weekday', date_format='%d/%m/%Y')
