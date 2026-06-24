@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 class default_params():
     ########cl3 Engine
-    #cl3_engine = create_engine('mssql+pyodbc://@cl3-data/DataWarehouse?'\
-     #                      'trusted_connection=yes&driver=ODBC+Driver+17'\
-      #                         '+for+SQL+Server')
+    cl3_engine = create_engine('mssql+pyodbc://@cl3-data/DataWarehouse?'\
+                               'trusted_connection=yes&driver=ODBC+Driver+17'\
+                               '+for+SQL+Server')
     ########General Params
     run_name = 'baseline'
     #run times and iterations
