@@ -363,17 +363,6 @@ if st.button('Run Model'):
                         st.session_state['occ'] = occ
                         st.session_state['args'] = args
 
-    ###################################################################DOWNLOADABLE STAFFING EXCEL FILE
-                        output = io.BytesIO()
-                        writer = pd.ExcelWriter(output, engine='xlsxwriter')
-                        args.wkdy_staff.to_excel(writer, sheet_name="Weekday")
-                        args.wknd_staff.to_excel(writer, sheet_name="Weekend")
-                        writer.close()
-                        processed_data = output.getvalue()
-                        b64 = base64.b64encode(processed_data)
-                        download_link = f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="Optimum Staffing.xlsx">Download Staffing.xlsx</a>'
-                        st.markdown(download_link, unsafe_allow_html=True)
-
 ###################################################################################################
                                             ####RESULTS####
 ###################################################################################################

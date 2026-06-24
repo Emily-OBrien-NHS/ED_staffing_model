@@ -6,3 +6,4 @@ sqlalchemy
 pyodbc
 xlsxwriter
 pulp
+openpyxl
