@@ -26,7 +26,7 @@ st.markdown('## Model instructions')
 st.write('Model runs based on the below image/flow diagram.  Please go through each input '\
             'tab to upload current demand and check/amend any input parameters before running the '\
             'model.')
-st.image('images/1 - Model Flow.png')
+st.image('images/1 - Model Flow.png', width=100)
 
 ###################################################################################################
                                      ####INPUT PARAMETERS####
@@ -440,10 +440,11 @@ if 'pat' in st.session_state:
                     'against the number of daily arrivals recorded in the model output.  Significant '\
                     'differences in the numbers here suggest that patients are getting stuck in the '\
                     'model and never getting recorded at the end.''')
-            st.dataframe(demand[['Input', 'Output']], width='content')
+            st.dataframe(demand[['Input', 'Output', 'Max Recorded Day']], width='content')
             #Warning if input and output arrivals different
             if demand['warn'].sum() > 0:
-                areas = ', '.join(demand.loc[demand['warn']].index)
+                wanrnings = demand.loc[demand['warn']].index.tolist()
+                areas = ' and '.join([', '.join(wanrnings[:-1]), wanrnings[-1]]) if len(wanrnings) > 1 else wanrnings[0]
                 st.error(f'Input, Output and recorded day numbers are significantly different for {areas}.  This suggests a blockage in the process.') 
         #4 hr performance
         with col2:
