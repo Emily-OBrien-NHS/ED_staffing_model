@@ -98,7 +98,7 @@ with input_tabs[1]:
     #Run Time
     st.write('###### Set number of days to run the model for:')
     run_time = st.number_input('Simulation run time (days)', min_value=1, max_value=730, step=1,
-                                value=120)
+                                value=90)
 
     st.write('###### Set average task durations and location capacities:')
     #Set title for each area
