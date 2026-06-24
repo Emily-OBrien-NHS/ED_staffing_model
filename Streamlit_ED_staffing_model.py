@@ -39,6 +39,10 @@ input_tabs = st.tabs(['Current ED Demand', 'Capacity and Timings', 'Staffing Lev
 with input_tabs[0]:
     st.markdown('## Current ED Demand')
     demand = None
+    amb_demand = None
+    maj_demand = None
+    res_demand = None
+    pae_demand = None
     col1, col2, col3 = st.columns(3)
     #ED Demand CSV upload
     with col1:
