@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 
 class default_params():
     ########cl3 Engine
-    cl3_engine = create_engine('mssql+pyodbc://@cl3-data/DataWarehouse?'\
-                               'trusted_connection=yes&driver=ODBC+Driver+17'\
-                               '+for+SQL+Server')
+    #cl3_engine = create_engine('mssql+pyodbc://@cl3-data/DataWarehouse?'\
+    #                           'trusted_connection=yes&driver=ODBC+Driver+17'\
+    #                           '+for+SQL+Server')
     ########General Params
     run_name = 'baseline'
     #run times and iterations
@@ -65,15 +65,19 @@ class default_params():
                         WHEN LocationDescription LIKE '%Majors%' THEN 'Majors'
                         WHEN LocationDescription LIKE '%Resus%' THEN 'Resus'
                         END"""
-    stream = dict(pd.read_sql(stream_sql, cl3_engine).values)
+    #stream = dict(pd.read_sql(stream_sql, cl3_engine).values)
+    stream = None
     
     ###################STAFFING
     ########Staffing Numbers
-    staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing Inputs/Proposed Staffing input.xlsx'
-    wkdy_staff = pd.read_excel(staff_file, sheet_name='Weekday', index_col=0)
-    wknd_staff = pd.read_excel(staff_file, sheet_name='Weekend', index_col=0)
+    #staff_file = 'G:/PerfInfo/Performance Management/OR Team/Emily Projects/Discrete Event Simulation/ED Staffing Model/Staffing Inputs/Proposed Staffing input.xlsx'
+    #wkdy_staff = pd.read_excel(staff_file, sheet_name='Weekday', index_col=0)
+    #wknd_staff = pd.read_excel(staff_file, sheet_name='Weekend', index_col=0)
     #wkdy_staff.iloc[:, :] = np.inf 
-    #wknd_staff.iloc[:, :] = np.inf 
+    #wknd_staff.iloc[:, :] = np.inf
+    wkdy_staff = None
+    wknd_staff = None
+
 
     ########Staffing Requirements
     #staff appear in order of preference and priority
@@ -111,7 +115,9 @@ class default_params():
                         WHEN LocationDescription LIKE '%Resus%' THEN 'Resus' END, 
                     CONVERT(DATE, ArrivalDateTime),
                     DATEPART(HOUR, ArrivalDateTime) """
-    demand = pd.read_sql(demand_sql, cl3_engine)
+    #demand = pd.read_sql(demand_sql, cl3_engine)
+    demand = None
+
     #Get all dates and hours to account for hours were 0 attend.
     all_vals = pd.DataFrame(product(demand['Location'].drop_duplicates(),
                                     demand['Dt'].drop_duplicates(),
@@ -134,7 +140,7 @@ class default_params():
     occ_staff_res = []
 
     ###################ADMIN
-    cl3_engine.dispose()
+    #cl3_engine.dispose()
 
 class spawn_patient:
     def __init__(self, p_id, area, time, dow, hour, stream_perc):
