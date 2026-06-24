@@ -63,7 +63,7 @@ with input_tabs[0]:
                                         demand['Dt'].drop_duplicates(),
                                         demand['Hr'].drop_duplicates()),
                                     columns=['Location', 'Dt', 'Hr'])
-        all_vals['wkdy'] = pd.to_datetime(all_vals['Dt'], format='%d/%m/%Y').dt.dayofweek
+        all_vals['wkdy'] = pd.to_datetime(all_vals['Dt'], dayfirst=True).dt.dayofweek
 
         demand = all_vals.merge(demand, on=['Location', 'Dt', 'Hr'], how='outer').fillna(0)
         st.dataframe(demand)
