@@ -26,7 +26,7 @@ st.markdown('## Model instructions')
 st.write('Model runs based on the below image/flow diagram.  Please go through each input '\
             'tab to upload current demand and check/amend any input parameters before running the '\
             'model.')
-st.image('images/1 - Model Flow.png', width=500)
+st.image('images/1 - Model Flow.png', width=600)
 
 ###################################################################################################
                                      ####INPUT PARAMETERS####
