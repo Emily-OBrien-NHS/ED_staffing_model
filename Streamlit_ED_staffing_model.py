@@ -84,6 +84,8 @@ with input_tabs[0]:
         with col3:
             st.write('Average daily ED arrivals by area in the uploaded file:')
             st.dataframe(inp_demand, width='content')
+        st.dataframe(demand)
+        st.dataframe(demand.dtypes)
 
 
 ##################################################################CAPACITIES, TIMINGS AND STREAMING
