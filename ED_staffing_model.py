@@ -117,6 +117,7 @@ class default_params():
                     DATEPART(HOUR, ArrivalDateTime) """
     #demand = pd.read_sql(demand_sql, cl3_engine)
     demand = pd.DataFrame({'Location':[''], 'Dt':[''], 'Hr':[''], 'Arrivals':[0]})
+    inp_demand = demand.copy()
 
     #Get all dates and hours to account for hours were 0 attend.
     all_vals = pd.DataFrame(product(demand['Location'].drop_duplicates(),
