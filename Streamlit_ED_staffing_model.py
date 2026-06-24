@@ -417,7 +417,7 @@ if 'pat' in st.session_state:
         #create check for if input and outted arrivals are different
         demand['warn'] = ((abs(demand['Output'] - demand['Input']) / demand['Input']) > 0.3)
 
-        st.dataframe(pat.groupby('Day')['Patient ID'].count() / (pat['Run'].max() + 1))
+        st.dataframe(pat.groupby(['Area', 'Day', 'Run'], as_index=False)['Patient ID'].count())
 
         ####4hr performance
         #overall
