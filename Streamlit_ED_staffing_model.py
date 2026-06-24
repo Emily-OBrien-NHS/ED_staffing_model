@@ -39,6 +39,7 @@ input_tabs = st.tabs(['Current ED Demand', 'Capacity and Timings', 'Staffing Lev
 with input_tabs[0]:
     st.markdown('## Current ED Demand')
     demand = None
+    inp_demand = None
     amb_demand = None
     maj_demand = None
     res_demand = None
