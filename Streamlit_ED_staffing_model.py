@@ -58,6 +58,7 @@ with input_tabs[0]:
     ########Manipulate demand file
     #Get all dates and hours to account for hours were 0 attend.
     if valid_demand_file:
+        st.dataframe(demand)
         all_vals = pd.DataFrame(product(demand['Location'].drop_duplicates(),
                                         demand['Dt'].drop_duplicates(),
                                         demand['Hr'].drop_duplicates()),
@@ -65,6 +66,7 @@ with input_tabs[0]:
         all_vals['wkdy'] = pd.to_datetime(all_vals['Dt'], format='%d/%m/%Y').dt.dayofweek
 
         demand = all_vals.merge(demand, on=['Location', 'Dt', 'Hr'], how='outer').fillna(0)
+        st.dataframe(demand)
 
         #Group up to get average arrivals per hour by location, pivot into usable format.
         demand = demand.groupby(['Location', 'wkdy', 'Hr'], as_index=False)['Arrivals'].mean()
