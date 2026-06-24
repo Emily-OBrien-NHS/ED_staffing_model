@@ -58,7 +58,6 @@ with input_tabs[0]:
     ########Manipulate demand file
     #Get all dates and hours to account for hours were 0 attend.
     if valid_demand_file:
-        st.dataframe(demand)
         all_vals = pd.DataFrame(product(demand['Location'].drop_duplicates(),
                                         demand['Dt'].drop_duplicates(),
                                         demand['Hr'].drop_duplicates()),
@@ -383,7 +382,7 @@ if 'pat' in st.session_state:
     writer.close()
     processed_data = output.getvalue()
     b64 = base64.b64encode(processed_data)
-    download_link = f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="Optimum Staffing.xlsx">Download Optimum Staffing.xlsx</a>'
+    download_link = f'<a href="data:application/octet-stream;base64,{b64.decode()}" download="Staffing.xlsx">Download Staffing.xlsx</a>'
     st.markdown(download_link, unsafe_allow_html=True)
 
 ####################################################################RESULTS TABS
@@ -409,6 +408,8 @@ if 'pat' in st.session_state:
         demand.columns = ['Input', 'Output']
         #create check for if input and outted arrivals are different
         demand['warn'] = ((abs(demand['Output'] - demand['Input']) / demand['Input']) > 0.3)
+
+        st.dataframe(pat.groupby('Day')['Patient ID'].count() / (pat['Run'].max() + 1))
 
         ####4hr performance
         #overall
